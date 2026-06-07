@@ -213,6 +213,28 @@ app.post("/api/pickups", authenticate, authorize("admin", "user"), (req, res) =>
     requestedBy: req.user.role === "user" ? req.user.id : null,
     createdAt: new Date().toISOString()
   };
+  const collectionGroupId = `COL-${Date.now()}`;
+  const createdAt = new Date().toISOString();
+  const inventoryItemIds = validItems.map((entry) => {
+    const item = {
+      id: nextId("EW", data.items),
+      collectionGroupId,
+      category: entry.category,
+      quantity: Number(entry.quantity),
+      weight: Number(entry.weight),
+      location,
+      lat: Number(lat),
+      lng: Number(lng),
+      condition: "Used",
+      hazard: "Low",
+      status: "Pending",
+      source: requester,
+      createdAt
+    };
+    data.items.push(item);
+    return item.id;
+  });
+  pickup.inventoryItemIds = inventoryItemIds;
   data.pickups.push(pickup);
   writeStore(data);
   return res.status(201).json(pickup);
@@ -238,7 +260,13 @@ app.patch("/api/pickups/:id/status", authenticate, (req, res) => {
   }
   const wasNotAlreadyCompleted = pickup.status !== "Completed" && req.body.status === "Completed";
   pickup.status = req.body.status;
-  if (wasNotAlreadyCompleted && pickup.wasteItems && pickup.wasteItems.length) {
+  if (wasNotAlreadyCompleted && pickup.inventoryItemIds && pickup.inventoryItemIds.length) {
+    data.items.forEach((item) => {
+      if (pickup.inventoryItemIds.includes(item.id) && item.status === "Pending") {
+        item.status = "Collected";
+      }
+    });
+  } else if (wasNotAlreadyCompleted && pickup.wasteItems && pickup.wasteItems.length) {
     const collectionGroupId = `COL-${Date.now()}`;
     const createdAt = new Date().toISOString();
     pickup.wasteItems.forEach((entry) => {
