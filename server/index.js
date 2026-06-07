@@ -236,7 +236,30 @@ app.patch("/api/pickups/:id/status", authenticate, (req, res) => {
       return res.status(403).json({ message: "Users can only cancel their own pending pickup requests." });
     }
   }
+  const wasNotAlreadyCompleted = pickup.status !== "Completed" && req.body.status === "Completed";
   pickup.status = req.body.status;
+  if (wasNotAlreadyCompleted && pickup.wasteItems && pickup.wasteItems.length) {
+    const collectionGroupId = `COL-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    pickup.wasteItems.forEach((entry) => {
+      const item = {
+        id: nextId("EW", data.items),
+        collectionGroupId,
+        category: entry.category,
+        quantity: Number(entry.quantity),
+        weight: Number(entry.weight),
+        location: pickup.location,
+        lat: pickup.lat,
+        lng: pickup.lng,
+        condition: "Used",
+        hazard: "Low",
+        status: "Collected",
+        source: pickup.requester,
+        createdAt
+      };
+      data.items.push(item);
+    });
+  }
   writeStore(data);
   return res.json(pickup);
 });
