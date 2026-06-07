@@ -128,6 +128,8 @@ td small { display: flex; align-items: center; gap: 4px; color: #9aa39e; margin-
 .status { width: fit-content; display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border-radius: 15px; background: #edf1ef; color: #5f6c65; font-size: 9px; font-weight: 700; }
 .status i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .status-recycled, .status-completed, .status-accepting { color: #167150; background: #e5f3ea; }
+.recycle-inline { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 9px; color: #5f8065; }
+.recycle-inline span { display: flex; align-items: center; gap: 3px; }
 .status-processing, .status-scheduled { color: #39799f; background: #e7f1f7; }
 .status-collected { color: #9a7620; background: #f8f1d9; }
 .status-pending, .status-near-capacity { color: #b6652d; background: #fbecdf; }

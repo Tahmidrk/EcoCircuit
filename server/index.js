@@ -163,6 +163,11 @@ app.patch("/api/items/:id/status", authenticate, (req, res) => {
     return res.status(403).json({ message: "Collectors can only mark pending batches as collected." });
   }
   item.status = req.body.status;
+  if (req.body.status === "Recycled") {
+    item.recoveredMaterial = req.body.recoveredMaterial || "";
+    item.co2Avoided = req.body.co2Avoided || "";
+    item.landfillDiversion = req.body.landfillDiversion || "";
+  }
   writeStore(data);
   return res.json(item);
 });

@@ -496,7 +496,13 @@ function Inventory({ user }) {
   const path = `/items?search=${encodeURIComponent(search)}&status=${encodeURIComponent(status)}&category=${encodeURIComponent(category)}`;
   const { data, loading, error, reload } = useData(path);
 
+  const [recycleModal, setRecycleModal] = useState(null);
+
   async function updateStatus(id, nextStatus) {
+    if (user.role === "admin" && nextStatus === "Recycled") {
+      setRecycleModal({ id });
+      return;
+    }
     await api(`/items/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: nextStatus }) });
     reload();
   }
@@ -535,7 +541,7 @@ function Inventory({ user }) {
                 <tbody>{data.map((item) => <tr key={item.id}>
                   <td><strong>{item.id}</strong><small>{new Date(item.createdAt).toLocaleDateString()}</small></td>
                   <td><CategoryCell category={item.category} /></td>
-                  <td><strong className="cell-primary">{item.source}</strong><small><MapPin size={12} />{item.location}</small></td>
+                  <td><strong className="cell-primary">{item.source}</strong><small><MapPin size={12} />{item.location}</small>{item.status === "Recycled" && item.recoveredMaterial && <div className="recycle-inline"><span><Recycle size={12} />{item.recoveredMaterial}</span><span><Factory size={12} />{item.co2Avoided}</span><span><TreePine size={12} />{item.landfillDiversion}</span></div>}</td>
                   <td>{item.quantity} pcs</td><td><strong>{item.weight} kg</strong></td>
                   <td><Hazard level={item.hazard} /></td>
                   <td>{user.role === "admin" || item.status === "Pending" ? <InlineStatus status={item.status} options={user.role === "admin" ? ["Pending", "Collected", "Processing", "Recycled"] : ["Pending", "Collected"]} onChange={(value) => updateStatus(item.id, value)} /> : <Status status={item.status} />}</td>
@@ -548,6 +554,7 @@ function Inventory({ user }) {
         )}
       </div>
       {modal && <ItemModal onClose={() => setModal(false)} onCreated={() => { setModal(false); reload(); }} />}
+      {recycleModal && <RecyclingModal itemId={recycleModal.id} onClose={() => setRecycleModal(null)} onSaved={() => { setRecycleModal(null); reload(); }} />}
     </>
   );
 }
@@ -572,6 +579,35 @@ function ItemModal({ onClose, onCreated }) {
       <Field label="Choose collection point on map" wide><LocationPicker lat={form.lat} lng={form.lng} onChange={({ lat, lng }) => setForm({ ...form, lat, lng, location: form.location || "Selected map location" })} /></Field>
     </div>
   </FormSubmit></Modal>;
+}
+
+function RecyclingModal({ itemId, onClose, onSaved }) {
+  const [form, setForm] = useState({ recoveredMaterial: "", co2Avoided: "", landfillDiversion: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event) {
+    event.preventDefault(); setLoading(true); setError("");
+    try {
+      await api(`/items/${itemId}/status`, { method: "PATCH", body: JSON.stringify({ status: "Recycled", ...form }) });
+      onSaved();
+    } catch (err) { setError(err.message); setLoading(false); }
+  }
+
+  return <Modal title="Recycling details" subtitle={`Record recycling outcome for ${itemId}.`} onClose={onClose}>
+    <form onSubmit={submit}>
+      {error && <div className="form-error"><AlertTriangle size={16} />{error}</div>}
+      <div className="form-grid">
+        <Field label="Recovered material" wide><input value={form.recoveredMaterial} onChange={(e) => setForm({ ...form, recoveredMaterial: e.target.value })} placeholder="e.g. 85% copper, 12% plastic recovered" /></Field>
+        <Field label="CO₂ emission avoided"><input value={form.co2Avoided} onChange={(e) => setForm({ ...form, co2Avoided: e.target.value })} placeholder="e.g. 42 kg CO₂" /></Field>
+        <Field label="Landfill diversion"><input value={form.landfillDiversion} onChange={(e) => setForm({ ...form, landfillDiversion: e.target.value })} placeholder="e.g. 95% diverted from landfill" /></Field>
+      </div>
+      <div className="modal-actions">
+        <button type="button" className="button secondary" onClick={onClose}>Cancel</button>
+        <button className="button primary" disabled={loading}>{loading ? "Saving..." : "Mark as Recycled"}<Recycle size={16} /></button>
+      </div>
+    </form>
+  </Modal>;
 }
 
 function Pickups({ user }) {
