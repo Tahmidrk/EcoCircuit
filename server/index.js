@@ -167,6 +167,28 @@ app.patch("/api/items/:id/status", authenticate, (req, res) => {
   return res.json(item);
 });
 
+app.delete("/api/items/:id", authenticate, authorize("admin"), (req, res) => {
+  const data = readStore();
+  const idx = data.items.findIndex((candidate) => candidate.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: "Item not found." });
+  data.items.splice(idx, 1);
+  writeStore(data);
+  return res.json({ message: "Deleted." });
+});
+
+app.delete("/api/pickups/:id", authenticate, authorize("admin"), (req, res) => {
+  const data = readStore();
+  const idx = data.pickups.findIndex((candidate) => candidate.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: "Pickup not found." });
+  const pickup = data.pickups[idx];
+  if (pickup.inventoryItemIds) {
+    data.items = data.items.filter((item) => !pickup.inventoryItemIds.includes(item.id));
+  }
+  data.pickups.splice(idx, 1);
+  writeStore(data);
+  return res.json({ message: "Deleted." });
+});
+
 app.get("/api/pickups", authenticate, (req, res) => {
   const pickups = readStore().pickups
     .filter((pickup) =>

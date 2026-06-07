@@ -501,6 +501,11 @@ function Inventory({ user }) {
     reload();
   }
 
+  async function deleteItem(id) {
+    await api(`/items/${id}`, { method: "DELETE" });
+    reload();
+  }
+
   function exportCsv() {
     const headers = ["ID", "Category", "Quantity", "Weight", "Location", "Condition", "Hazard", "Status", "Source"];
     const rows = data.map((item) => [item.id, item.category, item.quantity, item.weight, item.location, item.condition, item.hazard, item.status, item.source]);
@@ -526,7 +531,7 @@ function Inventory({ user }) {
             <div className="table-summary"><span><strong>{data.length}</strong> records found</span><span>Updated just now</span></div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Batch ID</th><th>Category</th><th>Source & location</th><th>Quantity</th><th>Weight</th><th>Hazard</th><th>Status</th></tr></thead>
+                <thead><tr><th>Batch ID</th><th>Category</th><th>Source & location</th><th>Quantity</th><th>Weight</th><th>Hazard</th><th>Status</th>{user.role === "admin" && <th></th>}</tr></thead>
                 <tbody>{data.map((item) => <tr key={item.id}>
                   <td><strong>{item.id}</strong><small>{new Date(item.createdAt).toLocaleDateString()}</small></td>
                   <td><CategoryCell category={item.category} /></td>
@@ -534,6 +539,7 @@ function Inventory({ user }) {
                   <td>{item.quantity} pcs</td><td><strong>{item.weight} kg</strong></td>
                   <td><Hazard level={item.hazard} /></td>
                   <td>{user.role === "admin" || item.status === "Pending" ? <InlineStatus status={item.status} options={user.role === "admin" ? ["Pending", "Collected", "Processing", "Recycled"] : ["Pending", "Collected"]} onChange={(value) => updateStatus(item.id, value)} /> : <Status status={item.status} />}</td>
+                  {user.role === "admin" && <td className="delete-cell"><button className="icon-button danger" onClick={() => deleteItem(item.id)} title="Delete item"><X size={15} /></button></td>}
                 </tr>)}</tbody>
               </table>
             </div>
@@ -588,6 +594,10 @@ function Pickups({ user }) {
     await api(`/pickups/${id}/status`, { method: "PATCH", body: JSON.stringify({ status: "Cancelled" }) });
     reload();
   }
+  async function deletePickup(id) {
+    await api(`/pickups/${id}`, { method: "DELETE" });
+    reload();
+  }
   return (
     <>
       <PageIntro eyebrow={user.role === "user" ? "Responsible disposal" : "Collection operations"} title={user.role === "admin" ? "Pickup requests" : user.role === "collector" ? "My assigned pickups" : "My pickup requests"} description={user.role === "admin" ? "Schedule, assign, coordinate, and complete e-waste collections." : user.role === "collector" ? "Follow your assigned collection schedule and mark completed stops." : "Request collection and follow its progress from submission to recycling."} actions={user.role !== "collector" && <button className="button primary" onClick={() => setModal(true)}><Plus size={17} />Request pickup</button>} />
@@ -606,6 +616,7 @@ function Pickups({ user }) {
                     {pickup.wasteItems?.length > 0 && <div className="pickup-waste-list">{pickup.wasteItems.map((item) => <span key={item.category}><strong>{item.category}</strong>{item.quantity} pcs · {item.weight} kg</span>)}</div>}
                     {pickup.notes && <p className="pickup-note">{pickup.notes}</p>}
                     {user.role === "admin" && <label className="assignment-control"><span>Assigned collector</span><select value={pickup.assignedTo || ""} onChange={(e) => assign(pickup.id, e.target.value)}><option value="">Unassigned</option>{(collectorsState.data || []).map((collector) => <option value={collector.id} key={collector.id}>{collector.name}</option>)}</select></label>}
+                    {user.role === "admin" && <button className="button danger-outline wide" onClick={() => deletePickup(pickup.id)} style={{marginTop: 8}}><X size={15} />Delete pickup</button>}
                     {user.role === "collector" && pickup.status === "Scheduled" && <button className="button primary wide collector-complete" onClick={() => updateStatus(pickup.id, "Completed")}><Check size={16} />Mark pickup complete</button>}
                     {user.role === "user" && pickup.status === "Pending" && <button className="button danger-outline wide collector-complete" onClick={() => cancelRequest(pickup.id)}><X size={15} />Cancel request</button>}
                   </article>
